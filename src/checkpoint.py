@@ -1,12 +1,13 @@
 """Checkpoint persistence using SQLite for the investment journey agent."""
 
 import logging
+from contextlib import AbstractContextManager
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 logger = logging.getLogger(__name__)
 
 
-def get_checkpointer(db_path: str = "checkpoints.sqlite") -> SqliteSaver:
+def get_checkpointer(db_path: str = "checkpoints.sqlite") -> AbstractContextManager[SqliteSaver]:
     """
     Get SQLite checkpointer for state persistence.
     
@@ -17,14 +18,11 @@ def get_checkpointer(db_path: str = "checkpoints.sqlite") -> SqliteSaver:
         db_path: Path to the SQLite database file
         
     Returns:
-        SqliteSaver instance configured for the database
+        Context manager that yields a SqliteSaver instance configured for the database
     """
     logger.info(f"Inicializando checkpointer SQLite: {db_path}")
     
-    # SqliteSaver automatically creates the database if it doesn't exist
-    checkpointer = SqliteSaver.from_conn_string(db_path)
-    
-    return checkpointer
+    return SqliteSaver.from_conn_string(db_path)
 
 
 def get_thread_id(user_id: str) -> str:
