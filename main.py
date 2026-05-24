@@ -29,6 +29,11 @@ def print_message(message: str):
     print("=" * 60 + "\n")
 
 
+def is_completed_state(state: dict) -> bool:
+    """Check whether a persisted journey has already finished."""
+    return state.get("current_step") == "end" or state.get("should_exit", False)
+
+
 def run_cli(app, config: dict, user_id: str):
     """Run the interactive CLI loop."""
     print_message(
@@ -49,11 +54,16 @@ def run_cli(app, config: dict, user_id: str):
         snapshot = app.get_state(config)
         if snapshot and snapshot.values:
             state = snapshot.values
-            logger.info(f"Estado recuperado do checkpoint: step={state.get('current_step')}")
-            print_message(
-                "📍 Continuando de onde paramos...\n\n"
-                f"Você estava em: {state.get('current_step')}"
-            )
+            if is_completed_state(state):
+                logger.info("Checkpoint finalizado encontrado; iniciando nova jornada")
+                print_message("A jornada anterior já foi concluída. Vamos iniciar uma nova.")
+                state = None
+            else:
+                logger.info(f"Estado recuperado do checkpoint: step={state.get('current_step')}")
+                print_message(
+                    "📍 Continuando de onde paramos...\n\n"
+                    f"Você estava em: {state.get('current_step')}"
+                )
     except Exception as e:
         logger.warning(f"Não foi possível recuperar estado: {e}")
 

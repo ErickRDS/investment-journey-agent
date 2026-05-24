@@ -1,6 +1,7 @@
 """Tests for state management."""
 
 import pytest
+from main import is_completed_state
 from src.state import create_initial_state, validate_state, JourneyState
 
 
@@ -117,3 +118,27 @@ def test_state_exit_flag():
     
     state["should_exit"] = True
     assert state["should_exit"] is True
+
+
+def test_completed_state_detects_finished_journey():
+    """Test that finished journeys are not resumed as active conversations."""
+    state = create_initial_state("test_user")
+    state["current_step"] = "end"
+    
+    assert is_completed_state(state) is True
+
+
+def test_completed_state_detects_exit_flag():
+    """Test that exited journeys are treated as completed."""
+    state = create_initial_state("test_user")
+    state["should_exit"] = True
+    
+    assert is_completed_state(state) is True
+
+
+def test_completed_state_allows_in_progress_journey():
+    """Test that in-progress journeys can still be resumed."""
+    state = create_initial_state("test_user")
+    state["current_step"] = "ask_goal"
+    
+    assert is_completed_state(state) is False
