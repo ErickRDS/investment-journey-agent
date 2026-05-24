@@ -17,7 +17,6 @@ from src.nodes import (
     explain_concept_with_llm_node,
     recommendation_node,
     end_node,
-    fallback_node,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,11 +29,51 @@ def route_from_start(state: JourneyState) -> Literal["ask_name", "end"]:
     return "ask_name"
 
 
-def route_from_ask_name(state: JourneyState) -> Literal["process_name", "end"]:
-    """Route from ask_name node."""
+def route_from_entry(
+    state: JourneyState,
+) -> Literal[
+    "start",
+    "ask_name",
+    "process_name",
+    "ask_goal",
+    "process_goal",
+    "ask_risk_profile",
+    "process_risk_profile",
+    "ask_time_horizon",
+    "process_time_horizon",
+    "explain_concept_with_llm",
+    "recommendation",
+    "end",
+]:
+    """Route each invocation from the persisted conversation step."""
     if state.get("should_exit"):
         return "end"
-    return "process_name"
+
+    current_step = state.get("current_step", "start")
+    has_input = bool((state.get("user_input") or "").strip())
+
+    if current_step == "ask_name" and has_input:
+        return "process_name"
+    if current_step == "ask_goal" and has_input:
+        return "process_goal"
+    if current_step == "ask_risk_profile" and has_input:
+        return "process_risk_profile"
+    if current_step == "ask_time_horizon" and has_input:
+        return "process_time_horizon"
+
+    if current_step in {
+        "start",
+        "ask_name",
+        "ask_goal",
+        "ask_risk_profile",
+        "ask_time_horizon",
+        "explain_concept_with_llm",
+        "recommendation",
+        "end",
+    }:
+        return current_step
+
+    return "end"
 
 
 def route_from_process_name(state: JourneyState) -> Literal["ask_name", "ask_goal", "end"]:
@@ -50,13 +89,6 @@ def route_from_process_name(state: JourneyState) -> Literal["ask_name", "ask_goa
         return "ask_name"
 
 
-def route_from_ask_goal(state: JourneyState) -> Literal["process_goal", "end"]:
-    """Route from ask_goal node."""
-    if state.get("should_exit"):
-        return "end"
-    return "process_goal"
-
-
 def route_from_process_goal(state: JourneyState) -> Literal["ask_goal", "ask_risk_profile", "end"]:
     """Route from process_goal node based on validation."""
     if state.get("should_exit"):
@@ -70,13 +102,6 @@ def route_from_process_goal(state: JourneyState) -> Literal["ask_goal", "ask_ris
         return "ask_goal"
 
 
-def route_from_ask_risk_profile(state: JourneyState) -> Literal["process_risk_profile", "end"]:
-    """Route from ask_risk_profile node."""
-    if state.get("should_exit"):
-        return "end"
-    return "process_risk_profile"
-
-
 def route_from_process_risk_profile(state: JourneyState) -> Literal["ask_risk_profile", "ask_time_horizon", "end"]:
     """Route from process_risk_profile node based on validation."""
     if state.get("should_exit"):
@@ -88,13 +113,6 @@ def route_from_process_risk_profile(state: JourneyState) -> Literal["ask_risk_pr
     else:
         # Invalid input, stay at ask_risk_profile
         return "ask_risk_profile"
-
-
-def route_from_ask_time_horizon(state: JourneyState) -> Literal["process_time_horizon", "end"]:
-    """Route from ask_time_horizon node."""
-    if state.get("should_exit"):
-        return "end"
-    return "process_time_horizon"
 
 
 def route_from_process_time_horizon(state: JourneyState) -> Literal["ask_time_horizon", "explain_concept_with_llm", "end"]:
@@ -115,11 +133,6 @@ def route_from_llm(state: JourneyState) -> Literal["recommendation", "end"]:
     if state.get("should_exit"):
         return "end"
     return "recommendation"
-
-
-def route_from_recommendation(state: JourneyState) -> Literal["end"]:
-    """Route from recommendation node."""
-    return "end"
 
 
 def create_journey_graph() -> StateGraph:
@@ -151,23 +164,24 @@ def create_journey_graph() -> StateGraph:
     graph.add_node("explain_concept_with_llm", explain_concept_with_llm_node)
     graph.add_node("recommendation", recommendation_node)
     graph.add_node("end", end_node)
-    graph.add_node("fallback", fallback_node)
     
-    # Set entry point
-    graph.set_entry_point("start")
+    # Route each CLI invocation from the current saved step.
+    graph.set_conditional_entry_point(route_from_entry)
     
     # Add conditional edges for routing
     graph.add_conditional_edges("start", route_from_start)
-    graph.add_conditional_edges("ask_name", route_from_ask_name)
     graph.add_conditional_edges("process_name", route_from_process_name)
-    graph.add_conditional_edges("ask_goal", route_from_ask_goal)
     graph.add_conditional_edges("process_goal", route_from_process_goal)
-    graph.add_conditional_edges("ask_risk_profile", route_from_ask_risk_profile)
     graph.add_conditional_edges("process_risk_profile", route_from_process_risk_profile)
-    graph.add_conditional_edges("ask_time_horizon", route_from_ask_time_horizon)
     graph.add_conditional_edges("process_time_horizon", route_from_process_time_horizon)
     graph.add_conditional_edges("explain_concept_with_llm", route_from_llm)
-    graph.add_conditional_edges("recommendation", route_from_recommendation)
+    
+    # Prompt nodes should stop after displaying the next question.
+    graph.add_edge("ask_name", END)
+    graph.add_edge("ask_goal", END)
+    graph.add_edge("ask_risk_profile", END)
+    graph.add_edge("ask_time_horizon", END)
+    graph.add_edge("recommendation", END)
     
     # End node terminates the graph
     graph.add_edge("end", END)
