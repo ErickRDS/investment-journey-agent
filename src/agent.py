@@ -76,7 +76,7 @@ def route_from_entry(
     return "end"
 
 
-def route_from_process_name(state: JourneyState) -> Literal["ask_name", "ask_goal", "end"]:
+def route_from_process_name(state: JourneyState) -> str:
     """Route from process_name node based on validation."""
     if state.get("should_exit"):
         return "end"
@@ -85,11 +85,11 @@ def route_from_process_name(state: JourneyState) -> Literal["ask_name", "ask_goa
     if current_step == "ask_goal":
         return "ask_goal"
     else:
-        # Invalid input, stay at ask_name
-        return "ask_name"
+        # Invalid input: keep the validation message set by the process node.
+        return END
 
 
-def route_from_process_goal(state: JourneyState) -> Literal["ask_goal", "ask_risk_profile", "end"]:
+def route_from_process_goal(state: JourneyState) -> str:
     """Route from process_goal node based on validation."""
     if state.get("should_exit"):
         return "end"
@@ -98,11 +98,11 @@ def route_from_process_goal(state: JourneyState) -> Literal["ask_goal", "ask_ris
     if current_step == "ask_risk_profile":
         return "ask_risk_profile"
     else:
-        # Invalid input, stay at ask_goal
-        return "ask_goal"
+        # Invalid input: keep the validation message set by the process node.
+        return END
 
 
-def route_from_process_risk_profile(state: JourneyState) -> Literal["ask_risk_profile", "ask_time_horizon", "end"]:
+def route_from_process_risk_profile(state: JourneyState) -> str:
     """Route from process_risk_profile node based on validation."""
     if state.get("should_exit"):
         return "end"
@@ -111,11 +111,11 @@ def route_from_process_risk_profile(state: JourneyState) -> Literal["ask_risk_pr
     if current_step == "ask_time_horizon":
         return "ask_time_horizon"
     else:
-        # Invalid input, stay at ask_risk_profile
-        return "ask_risk_profile"
+        # Invalid input: keep the validation message set by the process node.
+        return END
 
 
-def route_from_process_time_horizon(state: JourneyState) -> Literal["ask_time_horizon", "explain_concept_with_llm", "end"]:
+def route_from_process_time_horizon(state: JourneyState) -> str:
     """Route from process_time_horizon node based on validation."""
     if state.get("should_exit"):
         return "end"
@@ -124,8 +124,8 @@ def route_from_process_time_horizon(state: JourneyState) -> Literal["ask_time_ho
     if current_step == "explain_concept_with_llm":
         return "explain_concept_with_llm"
     else:
-        # Invalid input, stay at ask_time_horizon
-        return "ask_time_horizon"
+        # Invalid input: keep the validation message set by the process node.
+        return END
 
 
 def route_from_llm(state: JourneyState) -> Literal["recommendation", "end"]:

@@ -70,6 +70,20 @@ def test_process_name_invalid_input():
     assert result["error_count"] == 1
 
 
+def test_process_name_rejects_numeric_only_input():
+    """Test that numeric-only input is not accepted as a name."""
+    state = create_initial_state("test_user")
+    state["current_step"] = "ask_name"
+    state["user_input"] = "928"
+    
+    result = process_name_node(state)
+    
+    assert result["user_name"] is None
+    assert result["current_step"] == "ask_name"
+    assert result["error_count"] == 1
+    assert "nome" in result["last_message"].lower()
+
+
 def test_process_goal_valid_option_number():
     """Test that valid goal option (number) advances to ask_risk_profile."""
     state = create_initial_state("test_user")
@@ -116,6 +130,9 @@ def test_process_goal_invalid_option():
     assert result["investment_goal"] is None
     assert result["current_step"] == "ask_goal"
     assert result["error_count"] == 1
+    assert "não entendi" in result["last_message"].lower()
+    assert "1) Reserva de emergência" in result["last_message"]
+    assert "4) Aprender sobre investimentos" in result["last_message"]
 
 
 @patch('src.nodes.get_llm')
@@ -194,6 +211,8 @@ def test_graph_handles_invalid_input_gracefully():
     # Should stay at ask_goal with error
     assert result["current_step"] == "ask_goal"
     assert result["error_count"] == 1
+    assert "não entendi" in result["last_message"].lower()
+    assert "1) Reserva de emergência" in result["last_message"]
     
     # Provide valid goal option
     result["user_input"] = "1"

@@ -26,6 +26,16 @@ from src.llm import get_llm
 logger = logging.getLogger(__name__)
 
 
+def has_letter(value: str) -> bool:
+    """Return True when the value contains at least one alphabetic character."""
+    return any(char.isalpha() for char in value)
+
+
+def invalid_option_message(prompt: str, options: dict[str, str]) -> str:
+    """Build a helpful retry message with the expected options."""
+    return FALLBACK_INVALID_OPTION + "\n\n" + prompt + "\n\n" + format_options(options)
+
+
 def start_node(state: JourneyState) -> JourneyState:
     """
     Start node - welcomes the user and begins the journey.
@@ -79,7 +89,7 @@ def process_name_node(state: JourneyState) -> JourneyState:
     user_input = (state.get("user_input") or "").strip()
     logger.info(f"[process_name_node] User: {state['user_id']}, Input: {user_input}")
     
-    if user_input:
+    if user_input and has_letter(user_input):
         # Capitalize first letter of each word
         state["user_name"] = user_input.title()
         state["current_step"] = "ask_goal"
@@ -88,7 +98,10 @@ def process_name_node(state: JourneyState) -> JourneyState:
     else:
         # Invalid input
         state["error_count"] = state.get("error_count", 0) + 1
-        state["last_message"] = "Por favor, digite seu nome."
+        state["last_message"] = (
+            "Não consegui identificar um nome nessa resposta.\n\n"
+            "Por favor, digite como você gostaria de ser chamado(a)."
+        )
         state["current_step"] = "ask_name"
     
     return state
@@ -140,7 +153,9 @@ def process_goal_node(state: JourneyState) -> JourneyState:
     else:
         # Invalid option
         state["error_count"] = state.get("error_count", 0) + 1
-        state["last_message"] = FALLBACK_INVALID_OPTION
+        name = state.get("user_name", "")
+        prompt = ASK_GOAL_PROMPT.format(name=name)
+        state["last_message"] = invalid_option_message(prompt, ASK_GOAL_OPTIONS)
         state["current_step"] = "ask_goal"
     
     return state
@@ -195,7 +210,10 @@ def process_risk_profile_node(state: JourneyState) -> JourneyState:
     else:
         # Invalid option
         state["error_count"] = state.get("error_count", 0) + 1
-        state["last_message"] = FALLBACK_INVALID_OPTION
+        name = state.get("user_name", "")
+        goal = state.get("investment_goal", "")
+        prompt = ASK_RISK_PROMPT.format(name=name, goal=goal)
+        state["last_message"] = invalid_option_message(prompt, ASK_RISK_OPTIONS)
         state["current_step"] = "ask_risk_profile"
     
     return state
@@ -249,7 +267,9 @@ def process_time_horizon_node(state: JourneyState) -> JourneyState:
     else:
         # Invalid option
         state["error_count"] = state.get("error_count", 0) + 1
-        state["last_message"] = FALLBACK_INVALID_OPTION
+        risk_profile = state.get("risk_profile", "")
+        prompt = ASK_TIME_HORIZON_PROMPT.format(risk_profile=risk_profile)
+        state["last_message"] = invalid_option_message(prompt, ASK_TIME_HORIZON_OPTIONS)
         state["current_step"] = "ask_time_horizon"
     
     return state
